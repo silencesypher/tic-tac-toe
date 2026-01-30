@@ -48,7 +48,6 @@ function App() {
   const result = calculateWinner(squares);
   const winner = result?.winner;
   const winningLine = result?.line;
-  const [score, setScore] = useState({ X: 0, O: 0 });
 
 
   const isDraw = !winner && squares.every(square => square !== null);
@@ -59,12 +58,6 @@ function App() {
 
   function handleClick(index) {
     if (squares[index] || winner || isDraw) return;
-    if (!winner) {
-      setScore(prev => ({
-        ...prev,
-        [isXNext ? 'X' : 'O']: prev[isXNext ? 'X' : 'O'] + 1
-      }));
-    }
 
 
     const nextSquares = squares.slice();
@@ -75,7 +68,26 @@ function App() {
     
 
   }
-  
+  function makeAIMove(board) {
+    const empty = board
+      .map((v, i) => (v === null ? i : null))
+      .filter(v => v !== null);
+
+    if (empty.length === 0) return null;
+
+    const randomIndex = empty[Math.floor(Math.random() * empty.length)];
+    return randomIndex;
+  }
+
+  useEffect(() => {
+    if (!isXNext && !winner && !isDraw) {
+      const aiMove = makeAIMove(squares);
+
+      if (aiMove !== null) {
+        setTimeout(() => handleClick(aiMove), 500);
+      }
+    }
+  }, [isXNext, squares, winner, isDraw]);
 
   return (
     <div>
@@ -101,8 +113,6 @@ function App() {
           />
         ))}
       </div>
-
-      <p>Score — X: {score.X} | O: {score.O}</p>
 
       <button className="restart" onClick={resetGame}>
         Restart Game
