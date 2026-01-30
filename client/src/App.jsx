@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 import Square from './Square';
 import confetti from 'canvas-confetti';
-import { useEffect } from 'react';
+import { io } from "socket.io-client";
 
-
+const socket = io("http://localhost:3001");
 
 function calculateWinner(squares) {
   const lines = [
@@ -14,8 +14,8 @@ function calculateWinner(squares) {
     [0,3,6],
     [1,4,7],
     [2,5,8],
-    [0,4,8], 
-    [2,4,6] 
+    [0,4,8],
+    [2,4,6]
   ];
 
   for (let i = 0; i < lines.length; i++) {
@@ -37,63 +37,52 @@ function calculateWinner(squares) {
 }
 
 function App() {
-  function resetGame() {
-    setSquares(Array(9).fill(null));
-    setIsXNext(true);
-  }
-
-
   const [squares, setSquares] = useState(Array(9).fill(null));
   const [isXNext, setIsXNext] = useState(true);
+  const [role, setRole] = useState(null);
+
   const result = calculateWinner(squares);
   const winner = result?.winner;
   const winningLine = result?.line;
-
-
   const isDraw = !winner && squares.every(square => square !== null);
 
   useEffect(() => {
-      if (winner) confetti();
-    }, [winner]);
+    socket.on("role", (assignedRole) => {
+      setRole(assignedRole);
+    });
 
-  function handleClick(index) {
-    if (squares[index] || winner || isDraw) return;
+    socket.on("state", ({ gameState, isXNext }) => {
+      setSquares(gameState);
+      setIsXNext(isXNext);
+    });
 
-
-    const nextSquares = squares.slice();
-    nextSquares[index] = isXNext ? 'X' : 'O';
-
-    setSquares(nextSquares);
-    setIsXNext(!isXNext);
-    
-
-  }
-  function makeAIMove(board) {
-    const empty = board
-      .map((v, i) => (v === null ? i : null))
-      .filter(v => v !== null);
-
-    if (empty.length === 0) return null;
-
-    const randomIndex = empty[Math.floor(Math.random() * empty.length)];
-    return randomIndex;
-  }
+    return () => {
+      socket.off("role");
+      socket.off("state");
+    };
+  }, []);
 
   useEffect(() => {
-    if (!isXNext && !winner && !isDraw) {
-      const aiMove = makeAIMove(squares);
+    if (winner) confetti();
+  }, [winner]);
 
-      if (aiMove !== null) {
-        setTimeout(() => handleClick(aiMove), 500);
-      }
-    }
-  }, [isXNext, squares, winner, isDraw]);
+  function handleClick(index) {
+    if (
+      (isXNext && role !== 'X') ||
+      (!isXNext && role !== 'O')
+    ) return;
+
+    socket.emit("move", index);
+  }
+
+  function resetGame() {
+    console.log("Reset clicked, role:", role);
+    socket.emit("reset");
+  }
 
   return (
     <div>
       <h1>Tic Tac Toe</h1>
-
-      
 
       <p className={winner ? "winner-text" : ""}>
         {winner
@@ -102,6 +91,7 @@ function App() {
           ? "Draw!"
           : `Next player: ${isXNext ? 'X' : 'O'}`}
       </p>
+      <p>You are: {role}</p>
 
       <div className="board">
         {squares.map((value, index) => (
@@ -114,13 +104,16 @@ function App() {
         ))}
       </div>
 
-      <button className="restart" onClick={resetGame}>
+      <button
+        className="restart"
+        onClick={resetGame}
+        disabled={role !== 'X' && role !== 'O'}
+      >
         Restart Game
       </button>
 
     </div>
-    
   );
 }
 
-export default App
+export default App;
