@@ -37,17 +37,10 @@ function calculateWinner(squares) {
 }
 
 function App() {
-
   function resetGame() {
     setSquares(Array(9).fill(null));
     setIsXNext(true);
   }
-
-  
-  useEffect(() => {
-    if (winner) confetti();
-  }, [winner]);
-
 
 
   const [squares, setSquares] = useState(Array(9).fill(null));
@@ -59,6 +52,10 @@ function App() {
 
 
   const isDraw = !winner && squares.every(square => square !== null);
+
+  useEffect(() => {
+      if (winner) confetti();
+    }, [winner]);
 
   function handleClick(index) {
     if (squares[index] || winner || isDraw) return;
@@ -75,6 +72,8 @@ function App() {
 
     setSquares(nextSquares);
     setIsXNext(!isXNext);
+    
+
   }
   
 
